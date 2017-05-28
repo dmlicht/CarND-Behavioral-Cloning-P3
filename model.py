@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, List
 
 import pandas as pd
 import numpy as np
@@ -10,8 +10,10 @@ from keras.callbacks import ModelCheckpoint
 from keras.layers import Flatten, Dense, Lambda, Conv2D, Dropout, MaxPooling2D, Cropping2D
 from keras.models import Sequential
 
-DRIVE_LOG_PATH = os.path.join(".", "training2", "driving_log.csv")
-SIDE_IMAGE_CORRECTION = 2
+TRAINING_DIR = 'training2'
+IMG_DIR = 'IMG'
+DRIVE_LOG_PATH = os.path.join(".", TRAINING_DIR, "driving_log.csv")
+SIDE_IMAGE_CORRECTION = 1
 
 
 def augment_flip(X, y):
@@ -23,15 +25,15 @@ def augment_flip(X, y):
 def main():
     drive_log = pd.read_csv(DRIVE_LOG_PATH, names=["center", "left", "right", "angle", "throttle", "break", "speed"])
 
-    # X_train, y_train = load_center_data(drive_log)
-    X_train, y_train = load_multi_data(drive_log)
+    X_train, y_train = load_center_data(drive_log)
+    # X_train, y_train = load_multi_data(drive_log)
 
     X_aug, y_aug = augment_flip(X_train, y_train)
 
     X_train = np.concatenate((X_train, X_aug))
     y_train = np.concatenate((y_train, y_aug))
 
-    # pprint(X_train[0].shape) # -> (160, 320, 3)
+    pprint(X_train[0].shape) # -> (160, 320, 3)
     model = lenet()
 
     checkpoint = ModelCheckpoint('model.h5', monitor='val_loss', verbose=1, save_best_only=True)
@@ -41,13 +43,21 @@ def main():
 
 def load_center_data(drive_log):
     center_image_paths = drive_log["center"]
-    return load_images(center_image_paths), drive_log["angle"]
+    local_img_paths = convert_to_local_paths(center_image_paths)
+    return load_images(local_img_paths), drive_log["angle"]
 
+def convert_to_local_paths(paths: List[str]) -> List[str]:
+    return [convert_to_local_path(path) for path in paths]
+
+def convert_to_local_path(path: str) -> str:
+    tokens = path.split('/')
+    filename = tokens[-1]
+    return os.path.join(".", TRAINING_DIR, IMG_DIR, filename)
 
 def load_multi_data(drive_log, side_correction=1):
-    center_image_paths = drive_log["center"]
-    left_image_paths = drive_log["left"]
-    right_image_paths = drive_log["right"]
+    center_image_paths = convert_to_local_paths(drive_log["center"])
+    left_image_paths = convert_to_local_paths(drive_log["left"])
+    right_image_paths = convert_to_local_paths(drive_log["right"])
     angle = drive_log["angle"]
 
     center_images = load_images(center_image_paths)
@@ -79,9 +89,9 @@ def lenet():
     model = Sequential()
     model.add(Cropping2D(cropping=((50, 20), (0, 0)), input_shape=(160, 320, 3)))
     model.add(Lambda(_normalize_pixel))
-    model.add(Conv2D(32, 5, 5, activation="relu", border_mode="valid"))
+    model.add(Conv2D(8, 4, 4, activation="relu", border_mode="valid"))
     model.add(MaxPooling2D())
-    model.add(Conv2D(128, 5, 5, activation="relu", border_mode="valid"))
+    model.add(Conv2D(16, 4, 4, activation="relu", border_mode="valid"))
     model.add(MaxPooling2D())
     model.add(Flatten())
     model.add(Dropout(.5))
