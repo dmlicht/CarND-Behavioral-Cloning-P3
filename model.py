@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import os
 
-from pprint import pprint
 import cv2
 from keras.callbacks import ModelCheckpoint
 from keras.layers import Flatten, Dense, Lambda, Conv2D, Dropout, MaxPooling2D, Cropping2D
@@ -14,6 +13,7 @@ TRAINING_DIR = 'training2'
 IMG_DIR = 'IMG'
 DRIVE_LOG_PATH = os.path.join(".", TRAINING_DIR, "driving_log.csv")
 SIDE_IMAGE_CORRECTION = 1
+MODEL_FILE = 'model.h5'
 
 
 def augment_flip(X, y):
@@ -33,28 +33,33 @@ def main():
     X_train = np.concatenate((X_train, X_aug))
     y_train = np.concatenate((y_train, y_aug))
 
-    pprint(X_train[0].shape) # -> (160, 320, 3)
+    # pprint(X_train[0].shape) # -> (160, 320, 3)
     model = lenet()
 
-    checkpoint = ModelCheckpoint('model.h5', monitor='val_loss', verbose=1, save_best_only=True)
+    checkpoint = ModelCheckpoint(MODEL_FILE, monitor='val_loss', verbose=1, save_best_only=True)
     model.fit(X_train, y_train, validation_split=0.2, shuffle=True, callbacks=[checkpoint])
     # model.save("model.h5")
 
 
 def load_center_data(drive_log):
+    """ Load images and angles for the center Camera. """
     center_image_paths = drive_log["center"]
     local_img_paths = convert_to_local_paths(center_image_paths)
     return load_images(local_img_paths), drive_log["angle"]
 
+
 def convert_to_local_paths(paths: List[str]) -> List[str]:
     return [convert_to_local_path(path) for path in paths]
+
 
 def convert_to_local_path(path: str) -> str:
     tokens = path.split('/')
     filename = tokens[-1]
     return os.path.join(".", TRAINING_DIR, IMG_DIR, filename)
 
+
 def load_multi_data(drive_log, side_correction=1):
+    """ Load images and angles for the center and side cameras with augmented angles for the side cameras. """
     center_image_paths = convert_to_local_paths(drive_log["center"])
     left_image_paths = convert_to_local_paths(drive_log["left"])
     right_image_paths = convert_to_local_paths(drive_log["right"])
@@ -70,6 +75,7 @@ def load_multi_data(drive_log, side_correction=1):
 
 
 def load_images(paths: Iterable[str]) -> np.array:
+    """ Load a collection of images from paths. """
     return np.array([cv2.imread(path) for path in paths])
 
 
