@@ -24,6 +24,14 @@ The goals / steps of this project are the following:
 [image6]: ./examples/placeholder_small.png "Normal Image"
 [image7]: ./examples/placeholder_small.png "Flipped Image"
 
+[center_lane_driving]: ./writeup_images/center_lane_driving.jpg
+[recover_left_1]: ./writeup_images/recover_left_1.jpg
+[recover_left_2]: ./writeup_images/recover_left_2.jpg
+[recover_left_3]: ./writeup_images/recover_left_3.jpg
+[recover_right_1]: ./writeup_images/recover_right_1.jpg
+[recover_right_2]: ./writeup_images/recover_right_2.jpg
+[recover_right_3]: ./writeup_images/recover_right_3.jpg
+
 ## Rubric Points
 ###Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.  
 
@@ -97,36 +105,66 @@ At the end of the process, the vehicle is able to drive autonomously around the 
 
 ####2. Final Model Architecture
 
-Steal chart from the last project
-The final model architecture (model.py lines 18-24) consisted of a convolution neural network with the following layers and layer sizes ...
+The final model architecture (`model.py` in function `lenet` ) 
+consisted of a convolution neural network with the following layers and layer sizes:
 
-Here is a visualization of the architecture (note: visualizing the architecture is optional according to the project rubric)
+| Layer         		|     Description	        					| 
+|:---------------------:|:---------------------------------------------:| 
+| Input         		| 160x320x3 RGB image   					    | 
+| Convolution 4X4     	| 1x1 stride, valid padding, outputs 156x316x8 	|
+| RELU					|												|
+| Max pooling	      	| 2x2 stride,  outputs 78x158x8  				|
+| Convolution 4x4	    | 1x1 stride, valid padding, outputs 74x154x16  |
+| RELU					|												|
+| Max pooling	      	| 2x2 stride,  outputs 37x77x16  				|
+| Flatten               | outputs 45584x1                               |
+| Fully connected		| Outputs hidden layer size 120        	        |
+| Dropout               | keep_prob = .5 during training                |
+| RELU                  |                                               |
+| Fully connected		| Outputs hidden layer size 84        			|
+| Dropout               | keep_prob = .5 during_training                |
+| RELU                  |                                               |
+| Fully connected		| Outputs classes size 1        				|
+| Dropout               | keep_prob = .5 during_training                |
+| Softmax				| Returns probability of each class        		|
 
-![alt text][image1]
 
 ####3. Creation of the Training Set & Training Process
 
 To capture good driving behavior, I first recorded two laps on track one using center lane driving. Here is an example image of center lane driving:
 
-![alt text][image2]
+![center lane driving][center_lane_driving]
 
-I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to .... These images show what a recovery looks like starting from ... :
+I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to correct if it started going off the road
 
-![alt text][image3]
-![alt text][image4]
-![alt text][image5]
+These images show what a recovery looks like starting from the left (with many frames skipped):
 
-Then I repeated this process on track two in order to get more data points.
+![recover_left_1][recover_left_1]
+![recover_left_2][recover_left_2]
+![recover_left_3][recover_left_3]
 
-To augment the data sat, I also flipped images and angles thinking that this would ... For example, here is an image that has then been flipped:
+And these images show what a recovery looks like starting from the right (with many frames skipped):
 
-![alt text][image6]
-![alt text][image7]
+![recover_right_1][recover_right_1]
+![recover_right_2][recover_right_2]
+![recover_right_3][recover_right_3]
 
-Etc ....
+To augment the data sat, I also flipped images and angles thinking that this would would remove any bias for a particular direction of turning.
+This occurs in `model.py` in the function `augment_flip`
+Because the track is a loop, if you drive around only in the starting direction, your classifier will think it should always turn left. In addition,
+I drove around the loop in the other direction.
+Its good to flip all of the data to ensure that is balanced, in case I accidentally collected more data in one direction
 
-After the collection process, I had X number of data points. I then preprocessed this data by ...
+#### Training
 
-I finally randomly shuffled the data set and put Y% of the data into a validation set. 
+After the collection process, I had 10842 data points. 
+I then preprocessed this data by normalizing the data in `model._normalize_pixel`
+and I removed unused portions of the image using `Cropping2D`
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The ideal number of epochs was Z as evidenced by ... I used an adam optimizer so that manually training the learning rate wasn't necessary.
+I finally randomly shuffled the data set and put 20% of the data into a validation set. 
+That is, I trained on 8673 samples, validated on 2169 samples.
+
+The validation set helped determine if the model was over or under fitting. 
+I trained the model for 10 epochs and only saved the model when it improved on the validation set using `ModelCheckpoint`
+This would allow me to train the model as much as it was useful and not have to worry about selecting the perfect number of epochs.
+I used an adam optimizer so that manually training the learning rate wasn't necessary.
