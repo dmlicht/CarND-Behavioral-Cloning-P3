@@ -17,6 +17,7 @@ MODEL_FILE = 'model.h5'
 
 
 def augment_flip(X, y):
+    """ Flip the images horizontally to prevent bias on circular loops. """
     flipped_images = [cv2.flip(image, 1) for image in X]
     flipped_angles = [-1 * angle for angle in y]
     return np.array(flipped_images), np.array(flipped_angles)
